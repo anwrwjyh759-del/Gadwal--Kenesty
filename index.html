@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ff0000">
+<title>خدمات الكنيسة</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,Arial,sans-serif}
+  body{background:#000;color:#fff;min-height:100vh}
+  header{
+    background:linear-gradient(180deg,#1a0000 0%,#000 100%);
+    color:#ff3333;padding:20px;text-align:center;border-bottom:2px solid #ff0000;
+    box-shadow:0 0 20px #ff0000;text-shadow:0 0 10px #ff0000;
+    position:relative;
+  }
+  header h1{font-size:24px;margin-bottom:5px}
+.admin-btn{
+    position:absolute;top:15px;left:15px;background:transparent;border:2px solid #ff0000;
+    color:#ff3333;padding:6px 12px;border-radius:6px;font-size:14px;cursor:pointer;
+    display:none;
+  }
+.admin-btn.active{background:#ff0000;color:#000}
+.container{padding:15px;max-width:600px;margin:auto}
+.card{
+    background:rgba(20,0,0,0.8);border:1px solid #ff0000;border-radius:8px;padding:15px;
+    margin-bottom:15px;box-shadow:0 0 15px rgba(255,0,0,0.5);
+  }
+.card h2{color:#ff3333;font-size:18px;margin-bottom:10px;text-shadow:0 0 10px #ff0000;
+    border-bottom:1px solid #ff0000;padding-bottom:8px;}
+.schedule-item{display:flex;justify-content:space-between;padding:10px 0;
+    border-bottom:1px dashed rgba(255,0,0,0.3);color:#ff9999;}
+.schedule-item:last-child{border-bottom:none}
+.schedule-item span:last-child{color:#ff6666;font-weight:bold}
+.contact{display:flex;flex-direction:column;gap:10px;color:#ff9999;}
+.verse{text-align:center;font-style:italic;color:#ff6666;padding:10px;text-shadow:0 0 8px #ff0000;}
+.loading{text-align:center;color:#ff6666;padding:20px;}
+ [contenteditable="true"]{outline:2px dashed #ff0000;background:rgba(255,0,0,0.1);padding:2px 5px;border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="admin-btn" id="adminBtn">تعديل</button>
+  <h1 id="churchName">جاري التحميل...</h1>
+  <p id="subTitle"></p>
+</header>
+
+<div class="container">
+  <div class="card"><div class="verse" id="verseText"></div></div>
+  <div class="card">
+    <h2>مواعيد الخدمات</h2>
+    <div id="scheduleList" class="loading">جاري التحميل...</div>
+  </div>
+  <div class="card">
+    <h2>تواصل معنا</h2>
+    <div class="contact" id="contactInfo"></div>
+  </div>
+</div>
+
+<script>
+const CONFIG_URL = 'https://raw.githubusercontent.com/USERNAME/REPO/main/config.json';
+const ADMIN_PASSWORD = '250746';
+
+const adminBtn = document.getElementById('adminBtn');
+let isAdmin = false;
+let isEditMode = false;
+
+function checkAdmin(){
+  if(localStorage.getItem('church_admin') === 'true'){
+    isAdmin = true;
+    adminBtn.style.display = 'block';
+  }
+}
+
+adminBtn.onclick = () => {
+  if(!isEditMode){
+    const pass = prompt('اكتب كلمة السر:');
+    if(pass === ADMIN_PASSWORD){
+      isEditMode = true;
+      adminBtn.classList.add('active');
+      adminBtn.textContent = 'حفظ';
+
+      document.querySelectorAll('#churchName,#subTitle,#verseText,#scheduleList,#contactInfo')
+      .forEach(el => el.contentEditable = true);
+
+      alert('وضع التعديل شغال. عدل اللي انت عايزه ودوس حفظ');
+    }else{
+      alert('كلمة السر غلط');
+    }
+  }else{
+    const data = {
+      churchName: document.getElementById('churchName').textContent,
+      subTitle: document.getElementById('subTitle').textContent,
+      verseText: document.getElementById('verseText').textContent,
+      schedule: Array.from(document.querySelectorAll('#scheduleList.schedule-item')).map(item => ({
+        service: item.children[0].textContent,
+        time: item.children[1].textContent
+      })),
+      contact: Array.from(document.querySelectorAll('#contactInfo span')).map(s => s.textContent)
+    };
+
+    prompt('انسخ الكود ده وحطه في ملف config.json على GitHub:', JSON.stringify(data, null, 2));
+
+    isEditMode = false;
+    adminBtn.classList.remove('active');
+    adminBtn.textContent = 'تعديل';
+    document.querySelectorAll('[contenteditable]').forEach(el => el.contentEditable = false);
+  }
+};
+
+async function loadData(){
+  try{
+    const res = await fetch(CONFIG_URL + '?v=' + Date.now(), {cache: 'no-store'});
+    const data = await res.json();
+
+    document.getElementById('churchName').textContent = data.churchName;
+    document.getElementById('subTitle').textContent = data.subTitle;
+    document.getElementById('verseText').textContent = data.verseText;
+
+    document.getElementById('scheduleList').innerHTML = data.schedule.map(s =>
+      `<div class="schedule-item"><span>${s.service}</span><span>${s.time}</span></div>`
+    ).join('');
+
+    document.getElementById('contactInfo').innerHTML = data.contact.map(c =>
+      `<span>${c}</span>`
+    ).join('');
+
+  }catch(e){
+    document.getElementById('scheduleList').innerHTML = 'خطأ في التحميل';
+  }
+}
+
+checkAdmin();
+loadData();
+</script>
+
+</body>
+</html>
